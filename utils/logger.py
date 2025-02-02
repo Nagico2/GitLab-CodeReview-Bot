@@ -77,8 +77,10 @@ class LogHandler(logging.Logger):
         self.removeHandler(self.file_handler)
         self.__setFileHandler__()
 
+debug = True if os.environ.get('DEBUG', 'False').lower() == 'true' else False
+
 project_name = 'chat'
-log = LogHandler(project_name, level=DEBUG)
+log = LogHandler(project_name, level=INFO if not debug else DEBUG)
 if __name__ == '__main__':
     log.info('this is a test msg')
     log.error("this is a error")
