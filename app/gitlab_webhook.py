@@ -15,9 +15,11 @@ def ping():
 
 @git.route('/webhook', methods=['GET', 'POST'])
 def webhook():
-    webhook_token = request.headers.get('X-Gitlab-Token')
-    if webhook_token != gitlab_webhook_verify_token:
-        return jsonify({'status': 'bad verify token'}), 401
+    # check verify token if it is set
+    if gitlab_webhook_verify_token is not None:
+        webhook_token = request.headers.get('X-Gitlab-Token')
+        if webhook_token != gitlab_webhook_verify_token:
+            return jsonify({'status': 'bad verify token'}), 401
 
     if request.method == 'GET':
         return jsonify({'status': 'success'}), 200
@@ -25,7 +27,7 @@ def webhook():
     elif request.method == 'POST':
         gitlab_payload = request.data.decode('utf-8')
         gitlab_payload = json.loads(gitlab_payload)
-        log.info(f"🌈 ：{gitlab_payload}")
+        log.info(f"🌈 : {gitlab_payload}")
         event_type = gitlab_payload.get('object_kind')
 
         if event_type == 'merge_request':
