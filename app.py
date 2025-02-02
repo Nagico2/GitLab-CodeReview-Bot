@@ -5,7 +5,11 @@ from utils.args_check import check_config
 from utils.logger import log
 
 app = Flask(__name__)
-app.config['debug'] = True
+
+debug = True if os.environ.get('DEBUG', 'False').lower() == 'true' else False
+port = os.environ.get('PORT', 8000)
+
+app.config['debug'] = debug
 
 # router group
 app.register_blueprint(git, url_prefix='/git')
@@ -24,4 +28,4 @@ if __name__ == '__main__':
     log.info('Starting args check...')
     check_config()
     log.info('Starting the app...')
-    app.run(debug=True, host="0.0.0.0", port=80, use_reloader=False)
+    app.run(debug=debug, host="0.0.0.0", port=port, use_reloader=False)
