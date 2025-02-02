@@ -14,6 +14,8 @@ class LLMApiDefault(LLMApiInterface):
         self.model_name = None
         self.response = None
         self.provider = None
+        self.api_base = None
+        self.num_ctx = None
 
     def set_config(self, api_config: dict) -> bool:
         if api_config is None:
@@ -24,11 +26,22 @@ class LLMApiDefault(LLMApiInterface):
             if key == "PROVIDER":
                 self.provider = api_config[key]
             os.environ[key] = api_config[key]
+        
+        if self.provider == "ollama":
+            self.api_base = os.getenv("API_BASE", None)
+            self.num_ctx = int(os.getenv("NUM_CTX", "8192"))
+
         return True
 
     def generate_text(self, messages: list) -> bool:
         try:
-            self.response = unionchat(provider=self.provider, model=self.model_name, messages=messages)
+            self.response = unionchat(
+                provider=self.provider, 
+                model=self.model_name, 
+                messages=messages,
+                api_base=self.api_base,
+                num_ctx=self.num_ctx
+            )
         except Exception as e:
             raise e
         return True

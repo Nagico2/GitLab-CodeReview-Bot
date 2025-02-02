@@ -2,6 +2,7 @@ import importlib
 import warnings
 
 from config.config import llm_api_impl
+from llm_api.llm_api_interface import LLMApiInterface
 
 
 def get_llm_api_class():
@@ -12,7 +13,7 @@ def get_llm_api_class():
 
 
 # 使用工厂函数获取类实例
-def create_llm_api_instance():
+def create_llm_api_instance() -> LLMApiInterface:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=UserWarning)
         cls = get_llm_api_class()
