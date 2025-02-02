@@ -1,55 +1,12 @@
+import threading
+from flask import jsonify
 import requests
 from retrying import retry
 from config.config import *
+from service.chat_review import review_code_for_mr, LABEL_DONE, LABEL_FAILED, LABEL_WIP, set_label_wip
 from utils.logger import log
-from utils.dingding import send_dingtalk_message_by_sign
 
-@retry(stop_max_attempt_number=3, wait_fixed=2000)
-def get_merge_request_id(branch_name, project_id):
-    """
-    根据分支名，获取mr_id
-    :param branch_name: 分支名
-    :param project_id: 项目id
-    :return: 如果分支存在 mr 则返回mrid / 如果不存在mr 则返回 ""
-    """
-    url = f"{gitlab_server_url}/api/v4/projects/{project_id}/merge_requests"
-
-    params = {
-        "source_branch": branch_name,
-        "state": "opened"  # 可以根据需求选择合适的状态（opened、closed、merged等）
-    }
-    
-    headers = {"Private-Token": gitlab_private_token}
-    response = requests.get(url, params=params, headers=headers)
-
-    if response.status_code == 200:
-        merge_requests = response.json()
-        if len(merge_requests) > 0:
-            log.info(f"分支 '{branch_name}' 存在mr记录.{merge_requests}")
-            return merge_requests[0].get('iid')
-        else:
-            log.info(f"分支 '{branch_name}' 没有未关闭的mr.")
-    else:
-        log.error(f"获取分支'{branch_name}' 失败！. Status code: {response.status_code}")
-    return None
-
-
-@retry(stop_max_attempt_number=3, wait_fixed=2000)
-def get_commit_list(merge_request_iid, project_id):
-    api_url = f"{gitlab_server_url}/api/v4/projects/{project_id}/merge_requests/{merge_request_iid}/commits"
-    
-    headers = {"PRIVATE-TOKEN": gitlab_private_token}
-    response = requests.get(api_url, headers=headers)
-
-    commit_list = []
-    if response.status_code == 200:
-        commits = response.json()
-        for commit in commits:
-            print(f"Commit ID: {commit['id']}, Message: {commit['message']}")
-            commit_list.append(commit['id'])
-    else:
-        log.error(f"Failed to fetch commits. Status code: {response.status_code}")
-    return commit_list
+headers = {"Private-Token": gitlab_private_token}
 
 
 @retry(stop_max_attempt_number=3, wait_fixed=2000)
@@ -75,13 +32,13 @@ def get_merge_request_changes(project_id, merge_id):
 @retry(stop_max_attempt_number=3, wait_fixed=2000)
 def add_comment_to_mr(project_id, merge_request_id, comment):
     """
-    添加评论到GitLab的Merge Request
+    Add a comment to a GitLab Merge Request
 
-    :param gitlab_url: GitLab的基础URL
-    :param project_id: 项目ID
-    :param merge_request_id: Merge Request的ID
-    :param token: GitLab的API token
-    :param comment: 要添加的评论内容
+    :param gitlab_url: Base URL of the GitLab instance
+    :param project_id: Project ID
+    :param merge_request_id: Merge Request ID
+    :param token: GitLab API token
+    :param comment: Comment to add
     :return: Response JSON
     """
     headers = {
@@ -97,11 +54,10 @@ def add_comment_to_mr(project_id, merge_request_id, comment):
     response = requests.post(url, headers=headers, json=data)
 
     if response.status_code == 201:
-        log.info(f"评论信息发送成功：project_id:{project_id}  merge_request_id:{merge_request_id}")
+        log.info(f"Send comment success: project_id:{project_id}  merge_request_id:{merge_request_id}")
         return response.json()
     else:
-        log.error(f"评论信息发送成功：project_id:{project_id}  merge_request_id:{merge_request_id} response:{response}")
-        send_dingtalk_message_by_sign(f"评论信息发送成功：project_id:{project_id}  merge_request_id:{merge_request_id} response:{response}")
+        log.error(f"Send comment failed: project_id:{project_id}  merge_request_id:{merge_request_id} response:{response}")
         response.raise_for_status()
 
 
@@ -110,7 +66,6 @@ def add_comment_to_mr(project_id, merge_request_id, comment):
 def get_merge_request_comments(project_id, merge_request_iid):
     url = f"{gitlab_server_url}/api/v4/projects/{project_id}/merge_requests/{merge_request_iid}/notes"
 
-    headers = {"Private-Token": gitlab_private_token}
     response = requests.get(url, headers=headers)
 
     comments_content = ""
@@ -124,17 +79,15 @@ def get_merge_request_comments(project_id, merge_request_iid):
             comments_content += comment_body
 
     else:
-        print(f" 获取mr comment 失败， Status code: {response.status_code}")
+        log.error(f"Failed to get comments. Status code: {response.status_code}")
     return comments_content
 
 
 @retry(stop_max_attempt_number=3, wait_fixed=2000)
 def get_commit_change_file(push_info):
-    # 获取提交列表
     commit_list = push_info['commits']
     added_files_list = []
     modified_files_list = []
-    # 遍历提交
     for commit in commit_list:
         added_files = commit.get('added', [])
         modified_files = commit.get('modified', [])
@@ -142,3 +95,106 @@ def get_commit_change_file(push_info):
         modified_files_list += modified_files
 
     return added_files_list + modified_files_list
+
+
+__gitlab_user_id = None
+
+@retry(stop_max_attempt_number=3, wait_fixed=2000)
+def get_user_id():
+    global __gitlab_user_id
+    if __gitlab_user_id:
+        return __gitlab_user_id
+    url = f"{gitlab_server_url}/api/v4/user"
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        user_info = response.json()
+        __gitlab_user_id = user_info['id']
+        return __gitlab_user_id
+    else:
+        log.error(f"Falied to get user id. Status code: {response.status_code}")
+        raise Exception(f"Falied to get user id. Status code: {response.status_code}")
+
+
+def get_project_labels(project_id: int) -> list[str]:
+    """
+    Get the labels of the project
+    :param project_id:
+    :return:
+    """
+    url = f"{gitlab_server_url}/api/v4/projects/{project_id}/labels"
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return [label["name"] for label in response.json()]
+    else:
+        log.error(f"Fails to get labels, status code: {response.status_code}")
+        raise Exception(f"Fails to get labels, status code: {response.status_code}")
+
+
+def add_project_label(project_id: int, name: str, color: str):
+    """
+    Add a label to the project
+    :param project_id:
+    :param name:
+    :param color:
+    :return:
+    """
+    url = f"{gitlab_server_url}/api/v4/projects/{project_id}/labels"
+    data = {
+        "name": name,
+        "color": color
+    }
+    response = requests.post(url, headers=headers, json=data)
+    if response.status_code == 201:
+        log.info(f"Succeed to add label {name}")
+    else:
+        log.error(f"Fails to add label {name}, status code: {response.status_code}")
+        raise Exception(f"Fails to add label {name}, status code: {response.status_code}")
+
+
+
+@retry(stop_max_attempt_number=3, wait_fixed=2000)
+def create_project_labels(project_id: int):
+    """
+    Create labels for the project
+    :param project_id:
+    :return:
+    """
+    labels = get_project_labels(project_id)
+    if LABEL_WIP not in labels:
+        add_project_label(project_id, LABEL_WIP, "#eee600")
+    if LABEL_DONE not in labels:
+        add_project_label(project_id, LABEL_DONE, "#009966")
+    if LABEL_FAILED not in labels:
+        add_project_label(project_id, LABEL_FAILED, "#dc143c")
+
+
+def handle_mr_request(gitlab_payload: dict):
+    """
+    Handle a merge request event from GitLab
+    """
+    attr: dict = gitlab_payload.get("object_attributes")
+    project_id = attr.get("target_project_id")
+    mr_id = attr["iid"]
+
+    # 1. Check reviewer id, draft status, and the mr label
+    if (
+        get_user_id() not in attr.get("reviewer_ids") or 
+        attr.get("draft") or
+        (
+            LABEL_WIP in attr.get("labels") or
+            LABEL_DONE in attr.get("labels") or
+            LABEL_FAILED in attr.get("labels")
+        )
+    ):
+        return jsonify({'status': 'success'}), 200
+
+    # 2. Create the project label if necessary
+    create_project_labels(project_id)
+    set_label_wip(project_id, mr_id)
+
+    log.info("Trigger cr bot handler for mr: ", gitlab_payload)
+
+    thread = threading.Thread(target=review_code_for_mr, args=(project_id, mr_id, gitlab_payload))
+    thread.start()
+
+    return jsonify({'status': 'success'}), 200
