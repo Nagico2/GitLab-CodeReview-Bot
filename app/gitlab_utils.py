@@ -10,26 +10,6 @@ headers = {"Private-Token": gitlab_private_token}
 
 
 @retry(stop_max_attempt_number=3, wait_fixed=2000)
-def get_merge_request_changes(project_id, merge_id):
-    # URL for the GitLab API endpoint
-    url = f"{gitlab_server_url}/api/v4/projects/{project_id}/merge_requests/{merge_id}/changes"
-
-    # Headers for the request
-    headers = {
-        "PRIVATE-TOKEN": gitlab_private_token
-    }
-
-    # Make the GET request
-    response = requests.get(url, headers=headers)
-
-    # Check if the request was successful
-    if response.status_code == 200:
-        return response.json()["changes"]
-    else:
-        return None
-
-
-@retry(stop_max_attempt_number=3, wait_fixed=2000)
 def add_comment_to_mr(project_id, merge_request_id, comment):
     """
     Add a comment to a GitLab Merge Request
