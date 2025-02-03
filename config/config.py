@@ -18,10 +18,8 @@ maximum_files = 100
 
 # ------------------GPT info--------------------------
 # api impl
-llm_api_impl = "llm_api.llm_api_default.LLMApiDefault"
+llm_api_impl = "llm_api.llm_api_ollama.LLMApiOllama"
 
-# API config using UnionLLM by default, refer to: https://github.com/EvalsOne/UnionLLM/tree/main/docs
-# UnionLLM is compatible with LiteLLM, refer to LiteLLM documentation: https://docs.litellm.ai/docs
 api_config = {
     "MODEL_NAME": dot_config.get("LLM_MODEL_NAME", "deepseek-r1:70b"),
     "PROVIDER": "ollama",
