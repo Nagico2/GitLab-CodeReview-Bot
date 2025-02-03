@@ -76,8 +76,23 @@ class LogHandler(logging.Logger):
 
 debug = True if os.environ.get('DEBUG', 'False').lower() == 'true' else False
 
+log_level = os.environ.get('LOG_LEVEL', "")
+
+if log_level.lower() == 'critical':
+    log_level = CRITICAL
+elif log_level.lower() == 'error':
+    log_level = ERROR
+elif log_level.lower() == 'warning':
+    log_level = WARNING
+elif log_level.lower() == 'info':
+    log_level = INFO
+elif log_level.lower() == 'debug':
+    log_level = DEBUG
+else:
+    log_level = INFO if not debug else DEBUG
+
 project_name = 'chat'
-log = LogHandler(project_name, level=INFO if not debug else DEBUG)
+log = LogHandler(project_name, level=log_level)
 
 if __name__ == '__main__':
     log.info('this is a test msg')

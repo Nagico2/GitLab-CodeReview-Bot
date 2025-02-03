@@ -4,7 +4,13 @@ from retrying import retry
 from config.config import maximum_files, api_config, gpt_message
 from llm_api.llm_api_interface import LLMApiError
 from llm_api.load_api import create_llm_api_instance
-from service.gitlab_api import add_comment_to_mr, get_merge_request_changes, set_label_done, set_label_failed
+from service.gitlab_api import (
+    add_comment_to_mr, 
+    get_merge_request_changes, 
+    set_label_done, 
+    set_label_failed,
+    set_approve
+)
 from utils.logger import log
 
 def wait_and_retry(exception):
@@ -78,6 +84,7 @@ def review_code_for_mr(project_id: int, merge_id: int, gitlab_message: dict):
     if review_info != "":
         add_comment_to_mr(project_id, merge_id, review_info)
         set_label_done(project_id, merge_id)
+        set_approve(project_id, merge_id)
         log.info(
             f"Project name: {project_name}\n"
             f"Mr url: {mr_url}\n"

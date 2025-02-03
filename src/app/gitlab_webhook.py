@@ -27,7 +27,7 @@ def webhook():
     elif request.method == 'POST':
         gitlab_payload = request.data.decode('utf-8')
         gitlab_payload = json.loads(gitlab_payload)
-        log.info(f"🌈 : {gitlab_payload}")
+        log.debug(f"🌈 : {gitlab_payload}")
         event_type = gitlab_payload.get('object_kind')
 
         if event_type == 'merge_request':
