@@ -1,5 +1,15 @@
 from abc import ABC, abstractmethod
 
+
+class LLMApiError(Exception):
+    def __init__(self, inner: Exception):
+        super().__init__(str(inner))
+        self.inner = inner
+
+    def __str__(self):
+        return f"LLM API error: {self.inner}"
+
+
 class LLMApiInterface(ABC):
 
     @abstractmethod

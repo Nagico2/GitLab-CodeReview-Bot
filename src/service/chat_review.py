@@ -1,14 +1,14 @@
 import json
 from retrying import retry
 
-from openai import OpenAIError
 from config.config import maximum_files, api_config, gpt_message
+from llm_api.llm_api_interface import LLMApiError
 from llm_api.load_api import create_llm_api_instance
 from service.gitlab_api import add_comment_to_mr, get_merge_request_changes, set_label_done, set_label_failed
 from utils.logger import log
 
 def wait_and_retry(exception):
-    return isinstance(exception, OpenAIError)
+    return isinstance(exception, LLMApiError)
 
 
 @retry(retry_on_exception=wait_and_retry, stop_max_attempt_number=3, wait_fixed=60000)
