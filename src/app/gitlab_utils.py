@@ -16,14 +16,19 @@ def handle_mr_request(gitlab_payload: dict):
     project_id = attr.get("target_project_id")
     mr_id = attr["iid"]
 
+    labels = [
+        label["title"] if isinstance(label, dict) else label
+        for label in attr.get("labels", [])
+    ]
+
     # 1. Check reviewer id, draft status, and the mr label
     if (
         get_user_id() not in attr.get("reviewer_ids") or 
         attr.get("draft") or
         (
-            LABEL_WIP in attr.get("labels") or
-            LABEL_DONE in attr.get("labels") or
-            LABEL_FAILED in attr.get("labels")
+            LABEL_WIP in labels or
+            LABEL_DONE in labels or
+            LABEL_FAILED in labels
         )
     ):
         return jsonify({'status': 'success'}), 200
