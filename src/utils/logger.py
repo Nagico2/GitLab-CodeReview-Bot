@@ -1,7 +1,6 @@
 import os
-
 import logging
-
+from pathlib import Path
 from logging.handlers import TimedRotatingFileHandler
 
 # 日志级别
@@ -13,12 +12,10 @@ WARN = WARNING
 INFO = 20
 DEBUG = 10
 NOTSET = 0
+
 # Set the current directory
-current_dir = os.path.abspath(os.path.dirname(__file__))
-parent_dir = os.path.abspath(os.path.join(current_dir, ".."))
-CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
-ROOT_PATH = os.path.join(CURRENT_PATH, os.pardir)
-LOG_PATH = os.path.join(parent_dir, 'logs')
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+LOG_PATH = PROJECT_ROOT / 'logs'
 
 
 if not os.path.exists(LOG_PATH):
@@ -81,6 +78,7 @@ debug = True if os.environ.get('DEBUG', 'False').lower() == 'true' else False
 
 project_name = 'chat'
 log = LogHandler(project_name, level=INFO if not debug else DEBUG)
+
 if __name__ == '__main__':
     log.info('this is a test msg')
     log.error("this is a error")

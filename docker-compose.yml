@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - "./logs:/app/logs"
+      - "./config/config.py:/app/config/config.py:ro"
+      - "./config/.env:/app/config/.env:ro"
+    environment:
+      - GUNICORN_WORKERS=auto
+      - GUNICORN_THREADS=auto

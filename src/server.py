@@ -1,4 +1,21 @@
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).parent.parent
+SRC_ROOT = PROJECT_ROOT / 'src'
+
+# Add the root path to the sys.path
+sys.path.append(PROJECT_ROOT.as_posix())
+sys.path.append(SRC_ROOT.as_posix())
+
+try:
+    import gevent.monkey
+    gevent.monkey.patch_all()
+except ImportError:
+    pass
+
 import os
+
 from flask import Flask, jsonify, make_response
 from app.gitlab_webhook import git
 from utils.args_check import check_config
@@ -22,10 +39,10 @@ def handle_error(error):
     return make_response(jsonify({'code': error.code, 'msg': error_msg}), error.code)
 
 
+app.config['JSON_AS_ASCII'] = False
+log.info('Starting args check...')
+check_config()
+log.info('Starting the app...')
+
 if __name__ == '__main__':
-    os.environ['STABILITY_HOST'] = 'grpc.stability.ai:443'
-    app.config['JSON_AS_ASCII'] = False
-    log.info('Starting args check...')
-    check_config()
-    log.info('Starting the app...')
     app.run(debug=debug, host="0.0.0.0", port=port, use_reloader=False)
