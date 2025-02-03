@@ -1,6 +1,8 @@
 import requests
 from tabulate import tabulate
 
+from utils.logger import log
+
 def check_config():
     """
     Check the configuration
@@ -114,7 +116,7 @@ def check_exist(config, arg_names):
             errors.append(f"{arg_name} not found in config.py")
             res = False
     if errors:
-        print("\n".join(errors))
+        log.error("\n".join(errors))
     return res
 
 def wrap_text(text, width):
@@ -148,12 +150,12 @@ def print_results(results):
                           wrap_text(result[2], 50), result[3]]
         wrapped_results.append(wrapped_result)
     table = tabulate(wrapped_results, headers=["Check", "Status", "Details", "Influence Service"], tablefmt="grid", stralign="left")
-    print(table)
+    log.info("\n" + table)
     return all(result[1] == "Passed" for result in results)
 
 # 示例调用
 if __name__ == "__main__":
     if check_config():
-        print("All configuration checks passed")
+        log.info("All configuration checks passed")
     else:
-        print("Some configuration checks failed")
+        log.error("Some configuration checks failed")
