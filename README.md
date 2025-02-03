@@ -58,5 +58,10 @@ To use this project, you need:
         - Comment, `CrBot Done` label: The bot has finished the review
         - `CrBot Failed` label: The bot failed to review the code (e.g., LLM API error)
 
-## Results preview 🌈
+## Result Preview 🌈
 
+![Preview](/doc/img/cr_bot.png)
+
+## More Information 📚
+
+- [Documentation](/doc/)
